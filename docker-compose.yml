@@ -1,0 +1,14 @@
+---
+services:
+  web:
+    image: nginx
+    volumes:
+      - "./src/nginx/IA.conf:/etc/nginx/conf.d/IA.conf:ro"
+      - "./src/nginx/site/:/var/www/html/:ro"
+    ports:
+      - "8080:8000"
+
+  ids:
+    build: ./src/ids/
+    volumes:
+      - "./src/ids/code/:/app/code/:ro"
