@@ -1,6 +1,5 @@
 <?php
-session_start();
-$host = '127.0.0.1:3306';
+$host = 'mariadb';
 $dbname = 'test_ia';
 $user = 'pi';
 $password = 'pi';

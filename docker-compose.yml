@@ -1,14 +1,29 @@
 ---
 services:
-  web:
+  app:
     image: nginx
     volumes:
-      - "./src/nginx/IA.conf:/etc/nginx/conf.d/IA.conf:ro"
-      - "./src/nginx/site/:/var/www/html/:ro"
+      - "./src/app/nginx.conf:/etc/nginx/conf.d/nginx.conf:ro"
+      - "./src/app/site/:/var/www/html/:ro"
     ports:
-      - "8080:8000"
+      - "8080:8080"
 
   ids:
     build: ./src/ids/
     volumes:
       - "./src/ids/code/:/app/code/:ro"
+
+  php:
+    build: ./src/php/
+    volumes:
+      - "./src/app/site/:/var/www/html:ro"
+
+  mariadb:
+    image: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: pi
+      MYSQL_DATABASE: test_ia
+      MYSQL_USER: pi
+      MYSQL_PASSWORD: pi
+    volumes:
+      - ./src/bdd/init.sql:/docker-entrypoint-initdb.d/init.sql

@@ -1,32 +1,76 @@
 import http.server
 import http.client
+import ids
+import parser
+import sys
 
-TARGET_SERVER = 'web'
-TARGET_PORT = 8080
+TARGET_SERVER = 'app'
+TARGET_PORT = 8000
+MODEL = ids.IA()
+
 
 class ProxyHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        self.handle_request('GET')
+        self.scan_request('GET')
 
     def do_POST(self):
-        self.handle_request('POST')
+        if 'Content-Length' in self.headers:
+            body = self.rfile.read(int(self.headers['Content-Length'])).decode()
+        else:
+            body = ''
+
+        self.scan_request('POST', body)
 
     def do_PUT(self):
-        self.handle_request('PUT')
+        self.scan_request('PUT')
 
     def do_DELETE(self):
-        self.handle_request('DELETE')
+        self.scan_request('DELETE')
 
     def do_HEAD(self):
-        self.handle_request('HEAD')
+        self.scan_request('HEAD')
 
-    def handle_request(self, method):
-        print("Handling request")
+    def scan_request(self, method, body=''):
+
+        if self.path == "/process_login.php":
+                data = parser.parse(body, ["username", "password"])
+                
+        for d in data:
+            p = MODEL.predict(d)
+            if p > 0.4:
+                print("Injection detected !!!", file=sys.stderr)
+                self.handle_error()
+
+        print("No injection detected", file=sys.stderr)
+        self.handle_request(method, body)
+            
+
+    def handle_request(self, method, body=''):
         # Open a connection to the target server
         conn = http.client.HTTPConnection(TARGET_SERVER, TARGET_PORT)
         
-        # Send the original request to the target server with all headers
-        conn.request(method, self.path, headers=self.headers)
+        conn.request(method, self.path, headers=self.headers, body=body)
+
+        # Get the response from the target server
+        response = conn.getresponse()
+
+        # Send the target server's response back to the client
+        self.send_response(response.status)
+
+        for header, value in response.getheaders():
+            if header != 'Date' and header != 'Server':
+                self.send_header(header, value)
+
+        self.end_headers()
+
+        self.wfile.write(response.read())
+        conn.close()
+
+    def handle_error(self):
+        # Open a connection to the target server
+        conn = http.client.HTTPConnection(TARGET_SERVER, TARGET_PORT)
+        
+        conn.request("GET", "/error.html", headers=self.headers)
 
         # Get the response from the target server
         response = conn.getresponse()
@@ -44,6 +88,7 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         conn.close()
 
 if __name__ == '__main__':
+    # Setup the model
     # Start the reverse proxy server on port 8000
     server_address = ('', 8000)
     httpd = http.server.HTTPServer(server_address, ProxyHandler)
